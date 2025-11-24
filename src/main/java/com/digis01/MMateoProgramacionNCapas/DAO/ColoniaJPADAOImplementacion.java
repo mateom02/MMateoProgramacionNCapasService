@@ -6,6 +6,7 @@ import jakarta.persistence.TypedQuery;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Repository
 public class ColoniaJPADAOImplementacion implements IColoniaJPADAO {
@@ -13,6 +14,7 @@ public class ColoniaJPADAOImplementacion implements IColoniaJPADAO {
     @Autowired
     private EntityManager entityManager;
 
+    @CrossOrigin(origins = "http://localhost:8081")
     @Override
     public Result GetByIdMunicipio(int idMunicipio) {
         Result result = new Result();

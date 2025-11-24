@@ -7,7 +7,7 @@ import com.digis01.MMateoProgramacionNCapas.JPA.Result;
 public interface IDireccionJPADAO {
     
     Result AddByIdUsario(DireccionJPA direccion, int idUsuario);
-    Result Update(DireccionJPA direccion);
+    Result Update(DireccionJPA direccion, int idUsuario);
     Result Delete(int idDireccion);
     
 }

@@ -11,6 +11,9 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +30,7 @@ public class UsuarioJPA {
     @Column(name = "username", nullable = false)
     private String UserName;
 
+    @Size(min = 3, message = "El nombre debe tener minimo dos caracteres")
     @Column(name = "nombre")
     private String Nombre;
 

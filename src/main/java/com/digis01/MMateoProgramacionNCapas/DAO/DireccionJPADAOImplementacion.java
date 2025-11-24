@@ -29,19 +29,18 @@ public class DireccionJPADAOImplementacion implements IDireccionJPADAO {
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
         }
-
         return result;
     }
 
     @Override
     @Transactional
-    public Result Update(DireccionJPA direccion) {
+    public Result Update(DireccionJPA direccion, int idUsuario) {
         Result result = new Result();
 
         try {
 
             DireccionJPA direccionExistente = entityManager.find(DireccionJPA.class, direccion.getIdDireccion());
-            UsuarioJPA usuarioDireccion = entityManager.find(UsuarioJPA.class, direccionExistente.Usuario.getIdUsuario());
+            UsuarioJPA usuarioDireccion = entityManager.find(UsuarioJPA.class, idUsuario);
 
             direccionExistente = direccion;
             direccionExistente.Usuario = usuarioDireccion;
