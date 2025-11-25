@@ -64,6 +64,9 @@ public class UsuarioJPA {
     @Column(name = "imagen")
     @Lob
     private String Imagen;
+    
+    @Column(name="status")
+    public boolean status;
 
     @ManyToOne
     @JoinColumn(name = "idrol")
@@ -175,7 +178,5 @@ public class UsuarioJPA {
     public void setImagen(String Imagen) {
         this.Imagen = Imagen;
     }
-
-
 
 }

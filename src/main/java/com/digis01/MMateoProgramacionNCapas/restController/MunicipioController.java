@@ -17,7 +17,7 @@ public class MunicipioController {
     @Autowired
     private MunicipioJPADAOImplementacion municipioJPADAOImplementacion;
     
-    @GetMapping("idEstado")
+    @GetMapping("{idEstado}")
     public ResponseEntity GetByIdEstado(@PathVariable("idEstado") int idEstado){
                 Result result = new Result();
         try {

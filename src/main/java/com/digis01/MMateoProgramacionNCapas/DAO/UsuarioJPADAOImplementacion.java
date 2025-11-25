@@ -162,17 +162,23 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
 
     @Override
     @Transactional
-    public Result UpdateImagen(int idUsuario, String imagen) {
+    public Result UpdateImagen(int idUsuario, MultipartFile imagenFile) {
         Result result = new Result();
         try {
-
             UsuarioJPA usuariojpa = entityManager.find(UsuarioJPA.class, idUsuario);
-
-            usuariojpa.setImagen(imagen);
+            //Validar imagen
+            if (imagenFile != null) {
+                String extension = imagenFile.getOriginalFilename().split("\\.")[1];
+                if (extension.equals("jpg") || extension.equals("png")) {
+                    byte[] byteImagen = imagenFile.getBytes();
+                    String imagenBase64 = Base64.getEncoder().encodeToString(byteImagen);
+                    usuariojpa.setImagen(imagenBase64);
+                }
+            }
 
             entityManager.merge(usuariojpa);
             result.correct = true;
-
+            result.status = 200;
         } catch (Exception ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
@@ -272,25 +278,29 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
             //Si no hay errores
             //Generar token
             if (errores.isEmpty()) {
-                ValidacionResponse validacionResponse = new ValidacionResponse();
-                validacionResponse.nombreArchivo = fecha + file.getOriginalFilename();
-                validacionResponse.token = jwtService.generateToken();
-                validacionResponse.estatus = "VALIDO";
-                validacionResponse.fecha = LocalDateTime.now();
-                result.object = validacionResponse;
+//                ValidacionResponse validacionResponse = new ValidacionResponse();
+//                validacionResponse.nombreArchivo = fecha + file.getOriginalFilename();
+//                validacionResponse.token = jwtService.generateToken();
+//                validacionResponse.estatus = "VALIDO";
+//                validacionResponse.fecha = LocalDateTime.now();
+//                result.object = validacionResponse;
+                //Aqui general el log
+            
+                result.object = jwtService.generateToken();
                 result.correct = true;
-                result.status= 200;
-            }else{
-                ValidacionResponse validacionResponse = new ValidacionResponse();
-                validacionResponse.nombreArchivo = file.getOriginalFilename() + fecha;
-                validacionResponse.token = null;
-                validacionResponse.estatus = "ERROR";
-                validacionResponse.fecha = LocalDateTime.now();
-                validacionResponse.descripcion = "El archivo tuvo errores";
-                result.object = validacionResponse;
+                result.status = 200;
+            } else {
+//                ValidacionResponse validacionResponse = new ValidacionResponse();
+//                validacionResponse.nombreArchivo = file.getOriginalFilename() + fecha;
+//                validacionResponse.token = null;
+//                validacionResponse.estatus = "ERROR";
+//                validacionResponse.fecha = LocalDateTime.now();
+//                validacionResponse.descripcion = "El archivo tuvo errores";
+//                result.object = validacionResponse;
+//Generar log
                 result.objects = errores.stream().map(errorCarga -> (Object) errorCarga).toList();
                 result.correct = false;
-                result.status= 200;
+                result.status = 200;
             }
         } catch (Exception ex) {
             result.correct = false;
@@ -302,16 +312,16 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
 
     @Override
     @Transactional
-    public Result ProcesarCarga(String nombreArchivo) {
+    public Result ProcesarCarga() {
         Result result = new Result();
-        try{
-            String pathArchivo = "src/main/resources/archivosCarga"+"/" + nombreArchivo;
+        try {
+            String pathArchivo = "src/main/resources/archivosCarga" + "/" + "cls";//Tomar de log
             List<UsuarioJPA> usuarios = LecturaArchivoXLSX(pathArchivo);
             for (UsuarioJPA usuario : usuarios) {
                 entityManager.persist(usuario);
             }
             ValidacionResponse validacionResponse = new ValidacionResponse();
-            validacionResponse.nombreArchivo =nombreArchivo;
+            validacionResponse.nombreArchivo = "aslfjs";
             validacionResponse.token = null;
             validacionResponse.estatus = "PROCESADO";
             validacionResponse.fecha = LocalDateTime.now();
@@ -322,7 +332,7 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
         } catch (Exception ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
-            result.status =500;
+            result.status = 500;
             result.ex = ex;
         }
         return result;
@@ -379,6 +389,33 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
             linea++;
         }
         return errores;
+    }
+
+    @Override
+    @Transactional
+    public Result UpdateStatus(int idUsuario, boolean status) {
+        Result result = new Result();
+        
+        try {
+            
+            UsuarioJPA usuarioJPA = entityManager.find(UsuarioJPA.class,idUsuario);
+            if(usuarioJPA.status){
+                usuarioJPA.status = false;
+            }else{
+                usuarioJPA.status = true;
+            }
+            
+            entityManager.merge(usuarioJPA);
+             result.correct = true;
+            result.status = 200;
+        } catch (Exception ex) {
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+            result.status = 500;
+        }
+
+        return result;
     }
 
 }

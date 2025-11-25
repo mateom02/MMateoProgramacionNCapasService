@@ -12,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
-
 @RestController
 @RequestMapping("api/usuario")
 public class UsuarioController {
@@ -88,20 +86,20 @@ public class UsuarioController {
         return ResponseEntity.status(result.status).body(result);
     }
 
-//    @PatchMapping("imagen/{idUsuario}")
-//    public ResponseEntity UpdateImagen(@RequestBody UsuarioJPA usuario) {
-//        Result result = new Result();
-//        try {
-//            result = usuarioJPADAOImplementacion.Update(usuario);
-//           // result.status = 201;
-//        } catch (Exception ex) {
-//            result.correct = false;
-//            result.errorMessage = ex.getLocalizedMessage();
-//            result.ex = ex;
-//            result.status = 500;
-//        }
-//        return ResponseEntity.status(result.status).body(result);
-//    }
+    @PatchMapping("imagen/{idUsuario}")
+    public ResponseEntity UpdateImagen(@PathVariable("idUsuario") int idUsuario, @RequestParam("imagenFile") MultipartFile file) {
+        Result result = new Result();
+        try {
+            result = usuarioJPADAOImplementacion.UpdateImagen(idUsuario, file);
+            // result.status = 201;
+        } catch (Exception ex) {
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+            result.status = 500;
+        }
+        return ResponseEntity.status(result.status).body(result);
+    }
 
     @DeleteMapping("{idUsuario}")
     public ResponseEntity Delete(@PathVariable("idUsuario") int idUsuario) {
@@ -150,24 +148,38 @@ public class UsuarioController {
     }
 
     @PostMapping("cargaMasivaProcesar")
-    public ResponseEntity ProcesarCarga(HttpServletRequest request, @RequestParam("nombreArchivo") String nombreArchivo) {
+    public ResponseEntity ProcesarCarga(HttpServletRequest request) {
         Result result = new Result();
         try {
             String header = request.getHeader("Authorization");
             if (header != null && header.startsWith("Bearer ")) {
                 String token = header.substring(7);
                 if (jwtService.validateToken(token)) {
-                    usuarioJPADAOImplementacion.ProcesarCarga(nombreArchivo);
-                } else{
-                    result.correct=false;
+                    usuarioJPADAOImplementacion.ProcesarCarga();
+                } else {
+                    result.correct = false;
                     result.status = 404;
                     result.errorMessage = "Verifique el token";
                 }
-            }else{
-                result.correct=false;
+            } else {
+                result.correct = false;
                 result.status = 404;
                 result.errorMessage = "Verifique el token";
             }
+        } catch (Exception ex) {
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+            result.status = 500;
+        }
+        return ResponseEntity.status(result.status).body(result);
+    }
+
+    @PatchMapping("{idUsuario}/bajalogica")
+    public ResponseEntity BajaLogica(@PathVariable("idUsuario") int idUsuario, @RequestBody boolean status) {
+        Result result = new Result();
+        try {
+            result = usuarioJPADAOImplementacion.UpdateStatus(idUsuario, status);
         } catch (Exception ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();

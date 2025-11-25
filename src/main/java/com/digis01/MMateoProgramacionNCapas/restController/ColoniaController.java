@@ -33,7 +33,7 @@ public class ColoniaController {
         return ResponseEntity.status(result.status).body(result);
     }
 
-    @GetMapping("{codigoPostal}")
+    @GetMapping("byCodigoPostal/{codigoPostal}")
     public ResponseEntity GetByCodigoPostal(@PathVariable("codigoPostal") String codigoPostal) {
         Result result = new Result();
         try {

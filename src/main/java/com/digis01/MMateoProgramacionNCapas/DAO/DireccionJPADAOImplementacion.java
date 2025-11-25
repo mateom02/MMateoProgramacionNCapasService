@@ -3,6 +3,7 @@ package com.digis01.MMateoProgramacionNCapas.DAO;
 import com.digis01.MMateoProgramacionNCapas.JPA.DireccionJPA;
 import com.digis01.MMateoProgramacionNCapas.JPA.UsuarioJPA;
 import com.digis01.MMateoProgramacionNCapas.JPA.Result;
+import com.digis01.MMateoProgramacionNCapas.exception.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,26 @@ public class DireccionJPADAOImplementacion implements IDireccionJPADAO {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Override
+    public Result GetById(int idDireccion) {
+        Result result = new Result();
+        try {
+            DireccionJPA direccionJPA = entityManager.find(DireccionJPA.class, idDireccion);
+            
+            if(direccionJPA==null){
+                throw  new ResourceNotFoundException("Direccion con id" + idDireccion + " no encontrada");
+            }
+            result.object = direccionJPA;
+             result.status = 200;
+            result.correct = true;
+        } catch (Exception ex) {
+            result.correct = false;
+            result.errorMessage = ex.getLocalizedMessage();
+            result.ex = ex;
+        }
+        return result;
+    }
 
     @Override
     @Transactional
@@ -63,7 +84,7 @@ public class DireccionJPADAOImplementacion implements IDireccionJPADAO {
         try {
             DireccionJPA direccionJPA = entityManager.find(DireccionJPA.class, idDireccion);
             entityManager.remove(direccionJPA);
-            result.correct=true;
+            result.correct = true;
         } catch (Exception ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
