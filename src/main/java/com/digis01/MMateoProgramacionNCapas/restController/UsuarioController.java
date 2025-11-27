@@ -3,9 +3,6 @@ package com.digis01.MMateoProgramacionNCapas.restController;
 import com.digis01.MMateoProgramacionNCapas.DAO.UsuarioJPADAOImplementacion;
 import com.digis01.MMateoProgramacionNCapas.JPA.Result;
 import com.digis01.MMateoProgramacionNCapas.JPA.UsuarioJPA;
-import com.digis01.MMateoProgramacionNCapas.Service.JwtService;
-import com.fasterxml.jackson.annotation.JsonIgnoreType;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +16,6 @@ public class UsuarioController {
     @Autowired
     private UsuarioJPADAOImplementacion usuarioJPADAOImplementacion;
 
-    @Autowired
-    private JwtService jwtService;
 
     @GetMapping
     public ResponseEntity GetAll() {
@@ -38,7 +33,6 @@ public class UsuarioController {
         return ResponseEntity.status(result.status).body(result);
     }
 
-    @CrossOrigin(origins = "http://localhost:8081")
     @GetMapping("{idUsuario}")
     public ResponseEntity GetById(@PathVariable("idUsuario") int idUsuario) {
         Result result = new Result();
@@ -152,19 +146,13 @@ public class UsuarioController {
         Result result = new Result();
         try {
             String header = request.getHeader("Authorization");
-            if (header != null && header.startsWith("Bearer ")) {
-                String token = header.substring(7);
-                if (jwtService.validateToken(token)) {
-                    usuarioJPADAOImplementacion.ProcesarCarga();
-                } else {
-                    result.correct = false;
-                    result.status = 404;
-                    result.errorMessage = "Verifique el token";
-                }
+            String token = header.substring(7);
+            if (token != null) {
+                result = usuarioJPADAOImplementacion.ProcesarCarga(token);
             } else {
                 result.correct = false;
-                result.status = 404;
-                result.errorMessage = "Verifique el token";
+                result.errorMessage = "Falta token";
+                result.status = 401;
             }
         } catch (Exception ex) {
             result.correct = false;

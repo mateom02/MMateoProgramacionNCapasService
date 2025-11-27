@@ -3,7 +3,6 @@ package com.digis01.MMateoProgramacionNCapas.DAO;
 import com.digis01.MMateoProgramacionNCapas.JPA.Result;
 import com.digis01.MMateoProgramacionNCapas.JPA.RolJPA;
 import com.digis01.MMateoProgramacionNCapas.JPA.UsuarioJPA;
-import com.digis01.MMateoProgramacionNCapas.JPA.ValidacionResponse;
 import com.digis01.MMateoProgramacionNCapas.Service.JwtService;
 import com.digis01.MMateoProgramacionNCapas.Service.ValidacionService;
 import com.digis01.MMateoProgramacionNCapas.exception.ResourceAlreadyExistsException;
@@ -12,6 +11,7 @@ import com.digis01.MMateoProgramacionNCapas.restController.ErrorCarga;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import java.io.BufferedReader;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
@@ -27,12 +27,26 @@ import org.springframework.validation.ObjectError;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.poi.ss.usermodel.CellType;
 
 @Repository
 public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
@@ -218,6 +232,10 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
                 query += " AND u.Rol.IdRol = :pIdRol";
             }
 
+            if (usuario.status != null) {
+                query += " AND u.status = :status";
+            }
+
             TypedQuery<UsuarioJPA> queryUsuario = entityManager.createQuery(query, UsuarioJPA.class);
 
             queryUsuario.setParameter("nombre", usuario.getNombre().toLowerCase());
@@ -226,6 +244,9 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
 
             if (usuario.Rol.getIdRol() > 0) {
                 queryUsuario.setParameter("pIdRol", usuario.Rol.getIdRol());
+            }
+            if (usuario.status != null) {
+                queryUsuario.setParameter("status", usuario.status);//Numero?
             }
             List<UsuarioJPA> usuarios = queryUsuario.getResultList();
             result.object = usuarios;
@@ -253,7 +274,6 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
-//            entityTransaction.rollback();
         }
         return result;
     }
@@ -264,72 +284,89 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
         String extension = file.getOriginalFilename().split("\\.")[1];
         String pathBase = System.getProperty("user.dir");
         String pathArchivo = "src/main/resources/archivosCarga";
+        String pathLog = pathBase + "/src/main/resources/LOG_cargaMasiva.txt";
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmSS"));
         String pathDefinitvo = pathBase + "/" + pathArchivo + "/" + fecha + file.getOriginalFilename();
-        try {
-            file.transferTo(new File(pathDefinitvo));
-        } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
-        }
 
         try {
-            List<UsuarioJPA> usuarios = LecturaArchivoXLSX(pathDefinitvo);
-            List<ErrorCarga> errores = ValidarDatosArchivo(usuarios);
-            //Si no hay errores
-            //Generar token
+            file.transferTo(new File(pathDefinitvo));
+
+            List<UsuarioJPA> usuarios = new ArrayList<>();
+            List<ErrorCarga> errores = new ArrayList<>();
+
+            if (extension.equals("xlsx")) {
+                usuarios = LecturaArchivoXLSX(pathDefinitvo); //Error al abrir archivo
+            } else if (extension.equals("txt")) {
+                usuarios = LecturaArchivoTXT(pathDefinitvo);//error al abrir el archivo
+            }
+            errores = ValidarDatosArchivo(usuarios);
+
             if (errores.isEmpty()) {
-//                ValidacionResponse validacionResponse = new ValidacionResponse();
-//                validacionResponse.nombreArchivo = fecha + file.getOriginalFilename();
-//                validacionResponse.token = jwtService.generateToken();
-//                validacionResponse.estatus = "VALIDO";
-//                validacionResponse.fecha = LocalDateTime.now();
-//                result.object = validacionResponse;
-                //Aqui general el log
-            
-                result.object = jwtService.generateToken();
+                String nombreArchivo = fecha + file.getOriginalFilename();
+                String token = jwtService.generateToken();
+                escribirLog(pathLog, nombreArchivo, token, "VALIDO", LocalDateTime.now(), "El archivo no tuvo errores");
+                result.object = token;
                 result.correct = true;
                 result.status = 200;
             } else {
-//                ValidacionResponse validacionResponse = new ValidacionResponse();
-//                validacionResponse.nombreArchivo = file.getOriginalFilename() + fecha;
-//                validacionResponse.token = null;
-//                validacionResponse.estatus = "ERROR";
-//                validacionResponse.fecha = LocalDateTime.now();
-//                validacionResponse.descripcion = "El archivo tuvo errores";
-//                result.object = validacionResponse;
-//Generar log
+                String nombreArchivo = fecha + file.getOriginalFilename();
+                escribirLog(pathLog, nombreArchivo, null, "ERROR", LocalDateTime.now(), "El archivo  tuvo errores");
                 result.objects = errores.stream().map(errorCarga -> (Object) errorCarga).toList();
                 result.correct = false;
-                result.status = 200;
+                result.status = 222;//Error o algo
             }
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.ex = ex;
+            result.status = 500;
         }
         return result;
     }
 
     @Override
     @Transactional
-    public Result ProcesarCarga() {
+    public Result ProcesarCarga(String token) {
         Result result = new Result();
+
+        //Validar token 
+        if (!jwtService.validateToken(token)) {
+            result.correct = false;
+            result.status = 401;
+            result.errorMessage = "El token no es valido";
+            return result;
+        }
+
+        //Abrir archivo de log
+        String pathBase = System.getProperty("user.dir");
+        String pathLog = pathBase + "/src/main/resources/LOG_cargaMasiva.txt";
+        InputStream inputStream;
         try {
-            String pathArchivo = "src/main/resources/archivosCarga" + "/" + "cls";//Tomar de log
-            List<UsuarioJPA> usuarios = LecturaArchivoXLSX(pathArchivo);
-            for (UsuarioJPA usuario : usuarios) {
-                entityManager.persist(usuario);
+            inputStream = new FileInputStream(pathLog);
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
+            String lineaActual = bufferedReader.readLine();
+            String ultimaLinea = "";
+            while ((lineaActual = bufferedReader.readLine()) != null) {
+                ultimaLinea = lineaActual;
             }
-            ValidacionResponse validacionResponse = new ValidacionResponse();
-            validacionResponse.nombreArchivo = "aslfjs";
-            validacionResponse.token = null;
-            validacionResponse.estatus = "PROCESADO";
-            validacionResponse.fecha = LocalDateTime.now();
-            validacionResponse.descripcion = "El archivo se procceso con exito";
-            result.object = validacionResponse;
-            result.correct = true;
-            result.status = 200;
-        } catch (Exception ex) {
+            String lineas[] = ultimaLinea.split("\\|");
+
+            if (lineas[1].equals(token)) {
+                String pathArchivo = pathBase + "/src/main/resources/archivosCarga/" + lineas[0];
+                List<UsuarioJPA> usuarios = LecturaArchivoXLSX(pathArchivo);
+                for (UsuarioJPA usuario : usuarios) {
+                    entityManager.persist(usuario);
+                }
+                escribirLog(pathLog, lineas[0], token, "PROCESADO", LocalDateTime.now(), "El archivo fue procesado correctamente");
+                result.correct = true;
+                result.status = 200;
+            } else {
+                escribirLog(pathLog, lineas[0], token, "ERROR", LocalDateTime.now(), "Los Tokens no coinciden");
+                result.correct = false;
+                result.status = 401;
+            }
+        } catch (IOException ex) {
             result.correct = false;
             result.errorMessage = ex.getLocalizedMessage();
             result.status = 500;
@@ -338,38 +375,90 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
         return result;
     }
 
-    public List<UsuarioJPA> LecturaArchivoXLSX(String pathDefinitvo) {
+    public List<UsuarioJPA> LecturaArchivoXLSX(String pathDefinitvo) throws IOException {
         List<UsuarioJPA> usuarios = new ArrayList<>();
+        XSSFWorkbook workbook = new XSSFWorkbook(pathDefinitvo);
 
-        try (XSSFWorkbook workbook = new XSSFWorkbook(pathDefinitvo)) {
-            XSSFSheet sheet = workbook.getSheetAt(0);
-            for (Row row : sheet) {
-                UsuarioJPA usuario = new UsuarioJPA();
-                usuario.setUserName(row.getCell(0).toString().trim());
-                usuario.setNombre(row.getCell(1).toString().trim());
-                usuario.setApellidoPaterno(row.getCell(2).toString().trim());
-                usuario.setApellidoMaterno(row.getCell(3).toString().trim());
-                usuario.setEmail(row.getCell(4).toString().trim());
-                usuario.setPassword(row.getCell(5).toString().trim());
-                usuario.setFechaNacimiento(row.getCell(6).getDateCellValue());
-                usuario.setSexo(row.getCell(7).toString().trim());
-                DataFormatter formatter = new DataFormatter();
-                Cell cellPhone = row.getCell(8);
-                Cell cellCelular = row.getCell(9);
-                String phone = formatter.formatCellValue(cellPhone);
-                String celular = formatter.formatCellValue(cellCelular);
-                usuario.setTelefono(phone);
-                usuario.setCelular(celular);
-                usuario.setCurp(row.getCell(10).toString().trim());
-                usuario.Rol = new RolJPA();
-                usuario.Rol.setIdRol((int) row.getCell(11).getNumericCellValue());
-                usuarios.add(usuario);
+        XSSFSheet sheet = workbook.getSheetAt(0);
+
+        for (Row row : sheet) {
+
+            UsuarioJPA usuario = new UsuarioJPA();
+            usuario.setUserName(obtenerValorCelda(row.getCell(0)));
+            usuario.setNombre(obtenerValorCelda(row.getCell(1)));
+            usuario.setApellidoPaterno(obtenerValorCelda(row.getCell(2)));
+            usuario.setApellidoMaterno(obtenerValorCelda(row.getCell(3)));
+            usuario.setEmail(obtenerValorCelda(row.getCell(4)));
+            usuario.setPassword(obtenerValorCelda(row.getCell(5)));
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy");
+            try {
+                usuario.setFechaNacimiento(simpleDateFormat.parse(obtenerValorCelda(row.getCell(6))));
+            } catch (ParseException ex) {
+                Logger.getLogger(UsuarioJPADAOImplementacion.class.getName()).log(Level.SEVERE, null, ex);
             }
-        } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
-            usuarios = null;
+            usuario.setSexo(obtenerValorCelda(row.getCell(7)));
+            usuario.setTelefono(obtenerValorCelda(row.getCell(8)));
+            usuario.setCelular(obtenerValorCelda(row.getCell(9)));
+            usuario.setCurp(obtenerValorCelda(row.getCell(10)));
+            usuario.Rol = new RolJPA();
+            usuario.Rol.setIdRol((int) row.getCell(11).getNumericCellValue());
+            usuario.status = true;
+            usuarios.add(usuario);
         }
         return usuarios;
+    }
+
+    public List<UsuarioJPA> LecturaArchivoTXT(String path) throws FileNotFoundException, IOException {
+
+        List<UsuarioJPA> usuarios = new ArrayList<>();
+        InputStream inputStream = new FileInputStream(path);
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
+        String linea = "";
+
+        while ((linea = bufferedReader.readLine()) != null) {
+            //Extraer los datos
+            String[] campos = linea.split("\\|");
+            UsuarioJPA usuario = new UsuarioJPA();
+            usuario.setUserName(campos[0]);
+            usuario.setNombre(campos[1]);
+            usuario.setApellidoPaterno(campos[2]);
+            usuario.setApellidoMaterno(campos[3]);
+            usuario.setEmail(campos[4]);
+            usuario.setPassword(campos[5]);
+            SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
+            String fechaIngresada = campos[6];
+            try {
+                usuario.setFechaNacimiento(formatter.parse(fechaIngresada));
+            } catch (ParseException ex) {
+                Logger.getLogger(UsuarioJPADAOImplementacion.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            usuario.setSexo(campos[7]);
+            usuario.setTelefono(campos[8]);
+            usuario.setCelular(campos[9]);
+            usuario.setCurp(campos[10]);
+            usuario.Rol = new RolJPA();
+            usuario.Rol.setIdRol(Integer.parseInt(campos[11]));
+            usuario.status = true;
+            usuarios.add(usuario);
+
+        }
+        return usuarios;
+    }
+
+    private String obtenerValorCelda(Cell cell) {
+        DataFormatter formatter = new DataFormatter();
+        if (cell == null) {
+            return "";
+        }
+        return formatter.formatCellValue(cell).trim();
+    }
+
+    private void escribirLog(String pathLog, String nombreArchivo, String token, String status, LocalDateTime date, String comentario) throws FileNotFoundException {
+        File archivo = new File(pathLog);
+        PrintWriter printWriter = new PrintWriter(new FileOutputStream(archivo, true));
+        printWriter.write(nombreArchivo + "|" + token + "|" + status + "|" + date + "|" + comentario + System.lineSeparator());
+        printWriter.close();
     }
 
     public List<ErrorCarga> ValidarDatosArchivo(List<UsuarioJPA> usuarios) {
@@ -395,18 +484,17 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
     @Transactional
     public Result UpdateStatus(int idUsuario, boolean status) {
         Result result = new Result();
-        
+
         try {
-            
-            UsuarioJPA usuarioJPA = entityManager.find(UsuarioJPA.class,idUsuario);
-            if(usuarioJPA.status){
+            UsuarioJPA usuarioJPA = entityManager.find(UsuarioJPA.class,
+                    idUsuario);
+            if (usuarioJPA.status) {
                 usuarioJPA.status = false;
-            }else{
+            } else {
                 usuarioJPA.status = true;
             }
-            
             entityManager.merge(usuarioJPA);
-             result.correct = true;
+            result.correct = true;
             result.status = 200;
         } catch (Exception ex) {
             result.correct = false;
@@ -414,7 +502,6 @@ public class UsuarioJPADAOImplementacion implements IUsuarioJPA {
             result.ex = ex;
             result.status = 500;
         }
-
         return result;
     }
 

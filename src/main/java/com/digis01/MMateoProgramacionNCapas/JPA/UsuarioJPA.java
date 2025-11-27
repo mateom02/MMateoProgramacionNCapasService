@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "USUARIO")
@@ -66,7 +67,8 @@ public class UsuarioJPA {
     private String Imagen;
     
     @Column(name="status")
-    public boolean status;
+    @ColumnDefault("true")
+    public Boolean status;
 
     @ManyToOne
     @JoinColumn(name = "idrol")

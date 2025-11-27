@@ -16,7 +16,7 @@ public interface IUsuarioJPA {
     Result GetById(int idUsuario);
     Result Delete(int idUsuario);
     Result ValidarCarga(MultipartFile file);
-    Result ProcesarCarga();
+    Result ProcesarCarga(String token);
     Result SaveAll(List<UsuarioJPA> usuarios);
     Result UpdateStatus(int idUsuario, boolean status);
 }
