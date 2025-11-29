@@ -29,7 +29,7 @@ public class UsuarioJPA {
     private int IdUsuario;
 
     @Column(name = "username", nullable = false)
-    private String UserName;
+    private String userName;
 
     @Size(min = 3, message = "El nombre debe tener minimo dos caracteres")
     @Column(name = "nombre")
@@ -78,11 +78,11 @@ public class UsuarioJPA {
     public List<DireccionJPA> Direcciones = new ArrayList<>();
 
     public String getUserName() {
-        return UserName;
+        return userName;
     }
 
-    public void setUserName(String UserName) {
-        this.UserName = UserName;
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public int getIdUsuario() {
