@@ -1,6 +1,8 @@
 package com.digis01.MMateoProgramacionNCapas.restController;
 
+import com.digis01.MMateoProgramacionNCapas.DAO.IUsuarioRepository;
 import com.digis01.MMateoProgramacionNCapas.JPA.Result;
+import com.digis01.MMateoProgramacionNCapas.JPA.UsuarioJPA;
 import com.digis01.MMateoProgramacionNCapas.jwtutils.JwtUserDetailsService;
 import com.digis01.MMateoProgramacionNCapas.jwtutils.RequestModel;
 import com.digis01.MMateoProgramacionNCapas.jwtutils.TokenManager;
@@ -25,11 +27,13 @@ public class LoginController {
     private JwtUserDetailsService userDetailsService;
     private AuthenticationManager authenticationManager;
     private TokenManager tokenManager;
+    private IUsuarioRepository iUsuarioRepository;
 
-    public LoginController(JwtUserDetailsService userDetailsService, AuthenticationManager authenticationManager, TokenManager tokenManager) {
+    public LoginController(JwtUserDetailsService userDetailsService, AuthenticationManager authenticationManager, TokenManager tokenManager, IUsuarioRepository iUsuarioRepository) {
         this.userDetailsService = userDetailsService;
         this.authenticationManager = authenticationManager;
         this.tokenManager = tokenManager;
+        this.iUsuarioRepository = iUsuarioRepository;
     }
 
     @PostMapping("login")
@@ -40,7 +44,8 @@ public class LoginController {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(requestModel.getUsername(), requestModel.getPassword()));
             UserDetails userDetails = userDetailsService.loadUserByUsername(requestModel.getUsername());
-            String jwtToken = tokenManager.generarToken(userDetails);
+            UsuarioJPA user = iUsuarioRepository.findByUserName(requestModel.getUsername());
+            String jwtToken = tokenManager.generarToken(userDetails, user.getIdUsuario());
             result.object = jwtToken;
             result.status = 200;
         } catch (DisabledException e) {

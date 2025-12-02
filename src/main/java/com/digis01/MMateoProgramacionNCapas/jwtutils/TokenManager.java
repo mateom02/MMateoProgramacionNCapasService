@@ -1,5 +1,6 @@
 package com.digis01.MMateoProgramacionNCapas.jwtutils;
 
+import com.digis01.MMateoProgramacionNCapas.JPA.UsuarioJPA;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -13,6 +14,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 @Component
@@ -24,8 +26,12 @@ public class TokenManager {
     @Value("${security.jwt.expiration-time}")
     private Long expirationTime;
 
-    public String generarToken(UserDetails userDetails) {
+    public String generarToken(UserDetails userDetails, int idUsuario) {
         Map<String, Object> claims = new HashMap<>();
+        String rol = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).findFirst().orElse("");
+        claims.put("Rol", rol);
+//       UsuarioJPA usuario = (UsuarioJPA) userDetails;
+        claims.put("idUsuario", idUsuario);
         return Jwts
                 .builder()
                 .setClaims(claims)

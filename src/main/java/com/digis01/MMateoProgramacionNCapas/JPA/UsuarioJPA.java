@@ -15,9 +15,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import org.hibernate.annotations.ColumnDefault;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Entity
 @Table(name = "USUARIO")
@@ -65,8 +69,8 @@ public class UsuarioJPA {
     @Column(name = "imagen")
     @Lob
     private String Imagen;
-    
-    @Column(name="status")
+
+    @Column(name = "status")
     @ColumnDefault("true")
     public Boolean status;
 
@@ -180,5 +184,42 @@ public class UsuarioJPA {
     public void setImagen(String Imagen) {
         this.Imagen = Imagen;
     }
+
+//    @Override
+//    public Collection<? extends GrantedAuthority> getAuthorities() {
+//        List<GrantedAuthority> authorities = new ArrayList<>();
+//        authorities.add(new SimpleGrantedAuthority(Rol.getNombre()));
+//        return authorities;
+//    }
+//
+//    @Override
+//    public String getUsername() {
+//        return userName;
+//    }
+//
+//    @Override
+//    public String getPassword() {
+//        return this.Password;
+//    }
+//
+//    @Override
+//    public boolean isAccountNonExpired() {
+//        return true;
+//    }
+//
+//    @Override
+//    public boolean isAccountNonLocked() {
+//        return true;
+//    }
+//
+//    @Override
+//    public boolean isCredentialsNonExpired() {
+//        return true;
+//    }
+//
+//    @Override
+//    public boolean isEnabled() {
+//        return this.status != null ? this.status : true;
+//    }
 
 }
