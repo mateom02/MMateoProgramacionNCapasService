@@ -15,15 +15,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
-    
+
     private JwtUserDetailsService userDetailsService;
     private TokenManager tokeManager;
-    
-    public JwtFilter(JwtUserDetailsService jwtUserDetailsService, TokenManager tokenManager) {
+    private JwtCacheService jwtCacheService;
+
+    public JwtFilter(JwtUserDetailsService jwtUserDetailsService, TokenManager tokenManager, JwtCacheService jwtCacheService) {
         this.userDetailsService = jwtUserDetailsService;
         this.tokeManager = tokenManager;
+        this.jwtCacheService = jwtCacheService;
     }
-    
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String tokenHeader = request.getHeader("Authorization");
@@ -41,16 +43,20 @@ public class JwtFilter extends OncePerRequestFilter {
         } else {
             System.out.println("Token no encontrado");
         }
-        
+
         if (null != userName && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
             if (tokeManager.validarToken(token, userDetails)) {
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                if (jwtCacheService.RegistrarUso(token)) {
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }else{
+                    System.out.println("El token ya excedio su limite de uso (5)");
+                }
             }
         }
         filterChain.doFilter(request, response);
     }
-    
+
 }
